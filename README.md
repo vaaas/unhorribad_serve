@@ -6,7 +6,7 @@ Proudly unfancy local static file http server for shell one-liners.
 
 - Starts a local network static file server in the current working directory.
 - Simple as pie.
-- It doesn't make your 4GHz quad core beast box perform worse than underclocked 80186 using a number bleeding-edge dark optimisation arts. For example:
+- It doesn't make your 4GHz quad core beast box perform worse than an underclocked 80186 using a number of bleeding-edge dark optimisation arts. For example:
 	- Unlike a certain popular python one-liner, it doesn't block after every single trivial god damn request.
 	- Unlike a certain popular npm package, it lacks a local supercluster's weight in hipster MVC framework functional monadic transpiling middleware templating caffeinated microservice San Fran /r/node corporate buzzword dependencies.
 	- Unlike every god damn "news", "social networking", or corporate website, it sports a quality, Javascript-free, animation-free, bloat-free, bullshit-free, gluten-free [Motherfucking Website](http://motherfuckingwebsite.com/) design that shuts the fuck up, refrains from redrawing 2048 times a second, and Just Works™.
