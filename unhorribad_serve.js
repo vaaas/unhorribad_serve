@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* jshint esnext:true */
 
 "use strict";
 
@@ -10,19 +11,19 @@ const url = require("url");
 const zlib = require("zlib");
 const conf = {};
 
-http.ServerResponse.prototype.serve = function serve (conf) {
+function serve (res, conf) {
 	var gzip = zlib.createGzip();
 	conf.message["content-encoding"] = "gzip";
 
 	// we accept both streams and raw data
-	this.writeHead(conf.code, conf.message, conf.headers);
+	res.writeHead(conf.code, conf.message, conf.headers);
 	if (conf.data.constructor === fs.ReadStream) {
-		conf.data.pipe(gzip).pipe(this);
+		conf.data.pipe(gzip).pipe(res);
 	} else {
 		gzip.end(conf.data);
-		gzip.pipe(this);
+		gzip.pipe(res);
 	}
-};
+}
 
 function escapeHTML (unsafe) {
 	return unsafe
@@ -68,16 +69,7 @@ class ResponseConf {
 		};
 	}
 
-	static directory (pathname) {
-		var files = [];
-		try {
-			files = fs.readdirSync(pathname);
-		} catch (err) {
-			return ResponseConf.code(500);
-		}
-		for (var i = 0, len = files.length; i < len; i++) {
-			files[i] = path.join(pathname, files[i]);
-		}
+	static directory (pathname, files) {
 		return {
 			code: 200,
 			message: {
@@ -88,26 +80,33 @@ class ResponseConf {
 	}
 }
 
-class WebServer {
-	constructor (port, hostname) {
-		this.server = http.createServer(this.request_listener.bind(this));
-		this.server.listen(port, hostname);
-	}
-	request_listener(req, res) {
-		req.url = url.parse(req.url, true);
-		var pathname = path.join(conf.pwd, decodeURI(req.url.pathname));
-		fs.stat(pathname, function (err, stats) {
-			if (err) {
-				res.serve(ResponseConf.code(404));
-			} else if (stats.isDirectory()) {
-				res.serve(ResponseConf.directory(pathname));
-			} else if (stats.isFile()) {
-				res.serve(ResponseConf.file(pathname));
-			} else {
-				res.serve(ResponseConf.code(501));
-			}
-		});
-	}
+function request_listener(req, res) {
+	function DRY (conf) { serve (res, conf); }
+	req.url = url.parse(req.url, true);
+	var pathname = path.join(conf.pwd, decodeURI(req.url.pathname));
+	fs.stat(pathname, function (err, stats) {
+		if (err) {
+			DRY(ResponseConf.code(404));
+		} else if (stats.isDirectory()) {
+			request_directory(pathname, DRY);
+		} else if (stats.isFile()) {
+			DRY(ResponseConf.file(pathname));
+		} else {
+			DRY(ResponseConf.code(501));
+		}
+	});
+}
+
+function request_directory (pathname, callback) {
+	fs.readdir(pathname, function (err, files) {
+		if (err) {
+			return callback(ResponseConf.code(500));
+		}
+		for (var i = 0, len = files.length; i < len; i++) {
+			files[i] = path.join(pathname, files[i]);
+		}
+		callback(ResponseConf.directory(pathname, files));
+	});
 }
 
 function sensible_ip() {
@@ -132,10 +131,15 @@ function configure() {
 	conf.port = 8000;
 }
 
+function start_server () {
+	var server = http.createServer(request_listener);
+	server.listen(conf.port, conf.hostname);
+}
+
 function main () {
 	configure();
 	console.log(`Server running at \x1B[94mhttp://${conf.host}:${conf.port}\x1B[0m`);
-	new WebServer(conf.port, conf.ip);
+	start_server();
 }
 
 main();
