@@ -43,7 +43,7 @@ function stringify (string) {
 	return `"${string.replace("\"", "\\\"")}"`
 }
 
-class View {
+class Response {
 	static code (num, msg) {
 		return new ResponseConf(
 			num,
@@ -73,64 +73,62 @@ class View {
 	}
 }
 
-class Controller {
-	constructor() {
-		this.server = http.createServer(this.request_listener.bind(this))
-		this.port = 8080
-		this.host = this.sensible_ip()
-		this.server.listen(this.port, this.host)
+function sensible_ip() {
+	const ifaces = os.networkInterfaces()
+	for (let iface in ifaces) {
+		if (!ifaces.hasOwnProperty(iface)) continue
+		iface = ifaces[iface]
+		for (let i = 0; i < iface.length; i++)
+			if (iface[i].family === "IPv4" && iface[i].internal === false)
+				return iface[i].address
 	}
+	return "localhost"
+}
 
-	serve (res, conf) {
+function Server (port, host) {
+	function serve (res, conf) {
 		res.writeHead(conf.code, conf.headers)
 		if (conf.data.constructor === fs.ReadStream) conf.data.pipe(res)
 		else res.end(conf.data)
 	}
 
-	request_listener(req, res) {
+	function request_listener(req, res) {
 		req.url = url.parse(req.url, true)
 		const pathname = path.join(".", decodeURI(req.url.pathname))
 		fs.stat(pathname, (err, stats) => {
 			if (err) {
-				this.serve(res, View.code(404))
+				serve(res, Response.code(404))
 			} else if (stats.isDirectory()) {
-				this.request_directory(req, res, pathname)
+				request_directory(req, res, pathname)
 			} else if (stats.isFile()) {
-				this.serve(res, View.file(pathname, stats.size))
+				serve(res, Response.file(pathname, stats.size))
 			} else {
-				this.serve(res, View.code(501))
+				serve(res, Response.code(501))
 			}
 		})
 	}
 
-	request_directory (req, res, pathname) {
+	function request_directory (req, res, pathname) {
 		fs.readdir(pathname, (err, files) => {
 			if (err) {
-				return this.serve(res, View.code(500))
+				return serve(res, Response.code(500))
 			}
 			for (let i = 0, len = files.length; i < len; i++) {
 				files[i] = path.join(pathname, files[i])
 			}
-			this.serve(res, View.directory(pathname, files))
+			serve(res, Response.directory(pathname, files))
 		})
 	}
 
-	sensible_ip() {
-		const ifaces = os.networkInterfaces()
-		for (let iface in ifaces) {
-			if (!ifaces.hasOwnProperty(iface)) continue
-			iface = ifaces[iface]
-			for (let i = 0; i < iface.length; i++)
-				if (iface[i].family === "IPv4" && iface[i].internal === false)
-					return iface[i].address
-		}
-		return "localhost"
-	}
+	const server = http.createServer(request_listener)
+	server.listen(port, host)
 }
 
 function main () {
-	const server = new Controller()
-	console.log(`Server running at \x1B[94mhttp://${server.host}:${server.port}\x1B[0m`)
+	const port = 8080
+	const host = sensible_ip()
+	Server(port, host)
+	console.log(`Server running at \x1B[94mhttp://${host}:${port}\x1B[0m`)
 }
 
 main()
