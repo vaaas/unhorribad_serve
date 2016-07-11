@@ -39,6 +39,10 @@ function ResponseConf (code, headers, data) {
 	this.data = data
 }
 
+function stringify (string) {
+	return `"${string.replace("\"", "\\\"")}"`
+}
+
 class View {
 	static code (num, msg) {
 		return new ResponseConf(
@@ -53,7 +57,7 @@ class View {
 			200,
 			{ 
 				"Content-Type": "application/octet_stream",
-				"Content-Disposition": `attachment; filename=${encodeURIComponent(pathname)};`,
+				"Content-Disposition": `attachment; filename=${stringify(path.basename(pathname))};`,
 				"Content-Length": size,
 			},
 			fs.createReadStream(pathname)
