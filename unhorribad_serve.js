@@ -125,7 +125,7 @@ function Server (port, host) {
 }
 
 function main () {
-	const port = 8080
+	const port = 8000
 	const host = sensible_ip()
 	Server(port, host)
 	console.log(`Server running at \x1B[94mhttp://${host}:${port}\x1B[0m`)
